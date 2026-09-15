@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>特攻カテゴリ早見表</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#185fa5">
+<style>
+  :root {
+    --accent: #185fa5;
+    --accent-bg: #e6f1fb;
+    --border: #e0e0e0;
+    --text-secondary: #666;
+    --text-muted: #999;
+    --danger: #a32d2d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #f5f5f3;
+    color: #1a1a1a;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header {
+    background: #fff;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .tab-btn.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-color: var(--accent-bg);
+    font-weight: 600;
+  }
+  .search-bar {
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 15px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  .toolbar button {
+    flex: 1;
+    padding: 9px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fafafa;
+    font-size: 13px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  main {
+    padding: 8px 12px 24px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .tag {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .tag.clickable { cursor: pointer; }
+  .meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .card-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .card-actions button {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .card-actions button.delete { color: var(--danger); }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state p { font-size: 14px; margin: 8px 0 0; }
+
+  .category-count {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* モーダル */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: flex-end;
+    z-index: 100;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 20px calc(env(safe-area-inset-bottom) + 20px);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal h2 {
+    font-size: 17px;
+    margin: 0 0 16px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .field textarea { min-height: 60px; resize: vertical; }
+  .field .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .modal-buttons button {
+    flex: 1;
+    padding: 12px 0;
+    border-radius: 8px;
+    font-size: 15px;
+    border: none;
+  }
+  .btn-cancel {
+    background: #f0f0f0;
+    color: #333;
+  }
+  .btn-save {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  #csv-file-input { display: none; }
+  .toast {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    max-width: 85%;
+    text-align: center;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>特攻カテゴリ早見表</h1>
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-boss">ボスで検索</button>
+    <button class="tab-btn" id="tab-category">カテゴリで検索</button>
+  </div>
+</header>
+
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="ボス名で検索(例:セル)">
+</div>
+
+<div class="toolbar">
+  <button id="btn-add">+ 手動で追加</button>
+  <button id="btn-import">CSVをインポート</button>
+</div>
+<input type="file" id="csv-file-input" accept=".csv,text/csv">
+
+<main id="list-container"></main>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <h2 id="modal-title">ボスを追加</h2>
+    <div class="field">
+      <label>ボス名</label>
+      <input type="text" id="input-boss-name" placeholder="例:セル(完全体)">
+    </div>
+    <div class="field">
+      <label>特攻カテゴリ(複数は | で区切る)</label>
+      <textarea id="input-categories" placeholder="例:人造人間・バイオマン|恐怖の化身"></textarea>
+    </div>
+    <div class="field">
+      <label>シリーズ名(任意)</label>
+      <input type="text" id="input-series" placeholder="例:天下一武道会編">
+    </div>
+    <div class="field">
+      <label>メモ(任意)</label>
+      <textarea id="input-notes" placeholder="例:HT推奨"></textarea>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" id="btn-cancel">キャンセル</button>
+      <button class="btn-save" id="btn-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'dokkan_extreme_battles_v1';
+
+let battles = loadBattles();
+let currentTab = 'boss';
+let searchText = '';
+let editingId = null;
+
+function loadBattles() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('読み込みエラー', e);
+    return [];
+  }
+}
+
+function saveBattles() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(battles));
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function getAllCategories() {
+  const map = new Map();
+  battles.forEach(b => {
+    (b.categories || []).forEach(c => {
+      if (!map.has(c)) map.set(c, []);
+      map.get(c).push(b);
+    });
+  });
+  return map;
+}
+
+function render() {
+  const container = document.getElementById('list-container');
+  container.innerHTML = '';
+
+  if (battles.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <p>まだデータがありません。</p>
+      <p>「手動で追加」または「CSVをインポート」から登録してください。</p>
+    </div>`;
+    return;
+  }
+
+  if (currentTab === 'boss') {
+    renderBossList(container);
+  } else {
+    renderCategoryList(container);
+  }
+}
+
+function renderBossList(container) {
+  const filtered = battles.filter(b =>
+    !searchText || b.bossName.toLowerCase().includes(searchText.toLowerCase())
+  );
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>該当するボスが見つかりません。</p></div>`;
+    return;
+  }
+  filtered.sort((a, b) => a.bossName.localeCompare(b.bossName, 'ja'));
+  filtered.forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <p class="card-title">${escapeHtml(b.bossName)}</p>
+      <div class="tag-list">
+        ${(b.categories || []).map(c => `<span class="tag">${escapeHtml(c)}</span>`).join('')}
+      </div>
+      ${b.series ? `<p class="meta">${escapeHtml(b.series)}</p>` : ''}
+      ${b.notes ? `<p class="meta">${escapeHtml(b.notes)}</p>` : ''}
+      <div class="card-actions">
+        <button class="edit" data-id="${b.id}">編集</button>
+        <button class="delete" data-id="${b.id}">削除</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  container.querySelectorAll('.edit').forEach(btn => {
+    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+  });
+  container.querySelectorAll('.delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteBattle(btn.dataset.id));
+  });
+}
+
+function renderCategoryList(container) {
+  const map = getAllCategories();
+  let names = Array.from(map.keys());
+  if (searchText) {
+    names = names.filter(n => n.toLowerCase().includes(searchText.toLowerCase()));
+  }
+  if (names.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>該当するカテゴリが見つかりません。</p></div>`;
+    return;
+  }
+  names.sort((a, b) => a.localeCompare(b, 'ja'));
+  names.forEach(name => {
+    const list = map.get(name);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <p class="card-title">${escapeHtml(name)}</p>
+      <p class="category-count">${list.length}体のボスが対象</p>
+      <div class="tag-list" style="margin-top:8px;">
+        ${list.map(b => `<span class="tag clickable" data-boss="${escapeHtml(b.bossName)}">${escapeHtml(b.bossName)}</span>`).join('')}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  container.querySelectorAll('.tag.clickable').forEach(tag => {
+    tag.addEventListener('click', () => {
+      currentTab = 'boss';
+      searchText = tag.dataset.boss;
+      document.getElementById('search-input').value = searchText;
+      updateTabUI();
+      render();
+    });
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function deleteBattle(id) {
+  if (!confirm('このボスを削除しますか?')) return;
+  battles = battles.filter(b => b.id !== id);
+  saveBattles();
+  render();
+}
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'ボスを追加';
+  document.getElementById('input-boss-name').value = '';
+  document.getElementById('input-categories').value = '';
+  document.getElementById('input-series').value = '';
+  document.getElementById('input-notes').value = '';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function openEditModal(id) {
+  const battle = battles.find(b => b.id === id);
+  if (!battle) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'ボスを編集';
+  document.getElementById('input-boss-name').value = battle.bossName;
+  document.getElementById('input-categories').value = (battle.categories || []).join('|');
+  document.getElementById('input-series').value = battle.series || '';
+  document.getElementById('input-notes').value = battle.notes || '';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+function saveModal() {
+  const bossName = document.getElementById('input-boss-name').value.trim();
+  if (!bossName) {
+    showToast('ボス名を入力してください');
+    return;
+  }
+  const categories = document.getElementById('input-categories').value
+    .split('|').map(s => s.trim()).filter(Boolean);
+  const series = document.getElementById('input-series').value.trim();
+  const notes = document.getElementById('input-notes').value.trim();
+
+  if (editingId) {
+    const battle = battles.find(b => b.id === editingId);
+    battle.bossName = bossName;
+    battle.categories = categories;
+    battle.series = series;
+    battle.notes = notes;
+  } else {
+    battles.push({
+      id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      bossName, categories, series, notes
+    });
+  }
+  saveBattles();
+  closeModal();
+  render();
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim() !== '');
+  if (lines.length < 2) return { imported: 0, skipped: [] };
+  let imported = 0;
+  const skipped = [];
+  lines.slice(1).forEach((line, idx) => {
+    const cols = line.split(',');
+    if (cols.length < 2) { skipped.push(idx + 2); return; }
+    const bossName = cols[0].trim();
+    const categories = cols[1].split('|').map(s => s.trim()).filter(Boolean);
+    if (!bossName || categories.length === 0) { skipped.push(idx + 2); return; }
+    const series = (cols[2] || '').trim();
+    const notes = (cols[3] || '').trim();
+    battles.push({
+      id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      bossName, categories, series, notes
+    });
+    imported++;
+  });
+  saveBattles();
+  return { imported, skipped };
+}
+
+function updateTabUI() {
+  document.getElementById('tab-boss').classList.toggle('active', currentTab === 'boss');
+  document.getElementById('tab-category').classList.toggle('active', currentTab === 'category');
+  document.getElementById('search-input').placeholder =
+    currentTab === 'boss' ? 'ボス名で検索(例:セル)' : 'カテゴリ名で検索(例:GT)';
+}
+
+document.getElementById('tab-boss').addEventListener('click', () => {
+  currentTab = 'boss';
+  updateTabUI();
+  render();
+});
+document.getElementById('tab-category').addEventListener('click', () => {
+  currentTab = 'category';
+  updateTabUI();
+  render();
+});
+document.getElementById('search-input').addEventListener('input', (e) => {
+  searchText = e.target.value;
+  render();
+});
+document.getElementById('btn-add').addEventListener('click', openAddModal);
+document.getElementById('btn-cancel').addEventListener('click', closeModal);
+document.getElementById('btn-save').addEventListener('click', saveModal);
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-overlay') closeModal();
+});
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('csv-file-input').click();
+});
+document.getElementById('csv-file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = parseCSV(reader.result);
+    let msg = `${result.imported}件のボスを登録しました。`;
+    if (result.skipped.length > 0) msg += ` (スキップ行: ${result.skipped.join(', ')})`;
+    showToast(msg);
+    render();
+  };
+  reader.onerror = () => showToast('ファイルの読み込みに失敗しました');
+  reader.readAsText(file, 'UTF-8');
+  e.target.value = '';
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+render();
+</script>
+</body>
+</html>
