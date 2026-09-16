@@ -99,12 +99,54 @@
     border-radius: 10px;
     padding: 12px 14px;
     margin-bottom: 8px;
+    display: flex;
+    gap: 12px;
+  }
+  .card-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #f0f0f0;
+  }
+  .card-thumb-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .card-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 6px;
   }
   .card-title {
     font-size: 15px;
     font-weight: 600;
-    margin: 0 0 6px;
+    margin: 0;
   }
+  .rarity-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .rarity-badge.LR { background: #faeeda; color: #854f0b; }
+  .rarity-badge.UR { background: #eeedfe; color: #3c3489; }
   .tag-list {
     display: flex;
     flex-wrap: wrap;
@@ -250,6 +292,7 @@
 <div class="toolbar">
   <button id="btn-add">+ 手動で追加</button>
   <button id="btn-import">CSVをインポート</button>
+  <button id="btn-clear-all">全データ削除</button>
 </div>
 <input type="file" id="csv-file-input" accept=".csv,text/csv">
 
@@ -265,6 +308,15 @@
     <div class="field">
       <label>特攻カテゴリ(複数は | で区切る)</label>
       <textarea id="input-categories" placeholder="例:人造人間・バイオマン|恐怖の化身"></textarea>
+    </div>
+    <div class="field">
+      <label>レアリティ(任意)</label>
+      <input type="text" id="input-rarity" placeholder="例:LR / UR">
+    </div>
+    <div class="field">
+      <label>画像ファイル名(任意)</label>
+      <input type="text" id="input-image" placeholder="例:最強の奥義.png">
+      <p class="hint">images フォルダに置いたファイル名を入力してください</p>
     </div>
     <div class="field">
       <label>シリーズ名(任意)</label>
@@ -354,16 +406,25 @@ function renderBossList(container) {
   filtered.forEach(b => {
     const card = document.createElement('div');
     card.className = 'card';
+    const thumbHtml = b.image
+      ? `<img class="card-thumb" src="images/${encodeURIComponent(b.image)}" alt="${escapeHtml(b.bossName)}" loading="lazy" onerror="this.outerHTML='<div class=\\'card-thumb-placeholder\\'>画像なし</div>'">`
+      : `<div class="card-thumb-placeholder">画像なし</div>`;
     card.innerHTML = `
-      <p class="card-title">${escapeHtml(b.bossName)}</p>
-      <div class="tag-list">
-        ${(b.categories || []).map(c => `<span class="tag">${escapeHtml(c)}</span>`).join('')}
-      </div>
-      ${b.series ? `<p class="meta">${escapeHtml(b.series)}</p>` : ''}
-      ${b.notes ? `<p class="meta">${escapeHtml(b.notes)}</p>` : ''}
-      <div class="card-actions">
-        <button class="edit" data-id="${b.id}">編集</button>
-        <button class="delete" data-id="${b.id}">削除</button>
+      ${thumbHtml}
+      <div class="card-body">
+        <div class="card-title-row">
+          <p class="card-title">${escapeHtml(b.bossName)}</p>
+          ${b.rarity ? `<span class="rarity-badge ${escapeHtml(b.rarity)}">${escapeHtml(b.rarity)}</span>` : ''}
+        </div>
+        <div class="tag-list">
+          ${(b.categories || []).map(c => `<span class="tag">${escapeHtml(c)}</span>`).join('')}
+        </div>
+        ${b.series ? `<p class="meta">${escapeHtml(b.series)}</p>` : ''}
+        ${b.notes ? `<p class="meta">${escapeHtml(b.notes)}</p>` : ''}
+        <div class="card-actions">
+          <button class="edit" data-id="${b.id}">編集</button>
+          <button class="delete" data-id="${b.id}">削除</button>
+        </div>
       </div>
     `;
     container.appendChild(card);
@@ -429,6 +490,8 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'ボスを追加';
   document.getElementById('input-boss-name').value = '';
   document.getElementById('input-categories').value = '';
+  document.getElementById('input-rarity').value = '';
+  document.getElementById('input-image').value = '';
   document.getElementById('input-series').value = '';
   document.getElementById('input-notes').value = '';
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -441,6 +504,8 @@ function openEditModal(id) {
   document.getElementById('modal-title').textContent = 'ボスを編集';
   document.getElementById('input-boss-name').value = battle.bossName;
   document.getElementById('input-categories').value = (battle.categories || []).join('|');
+  document.getElementById('input-rarity').value = battle.rarity || '';
+  document.getElementById('input-image').value = battle.image || '';
   document.getElementById('input-series').value = battle.series || '';
   document.getElementById('input-notes').value = battle.notes || '';
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -458,6 +523,8 @@ function saveModal() {
   }
   const categories = document.getElementById('input-categories').value
     .split('|').map(s => s.trim()).filter(Boolean);
+  const rarity = document.getElementById('input-rarity').value.trim();
+  const image = document.getElementById('input-image').value.trim();
   const series = document.getElementById('input-series').value.trim();
   const notes = document.getElementById('input-notes').value.trim();
 
@@ -465,12 +532,14 @@ function saveModal() {
     const battle = battles.find(b => b.id === editingId);
     battle.bossName = bossName;
     battle.categories = categories;
+    battle.rarity = rarity;
+    battle.image = image;
     battle.series = series;
     battle.notes = notes;
   } else {
     battles.push({
       id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      bossName, categories, series, notes
+      bossName, categories, rarity, image, series, notes
     });
   }
   saveBattles();
@@ -488,12 +557,14 @@ function parseCSV(text) {
     if (cols.length < 2) { skipped.push(idx + 2); return; }
     const bossName = cols[0].trim();
     const categories = cols[1].split('|').map(s => s.trim()).filter(Boolean);
-    if (!bossName || categories.length === 0) { skipped.push(idx + 2); return; }
+    if (!bossName) { skipped.push(idx + 2); return; }
     const series = (cols[2] || '').trim();
     const notes = (cols[3] || '').trim();
+    const rarity = (cols[4] || '').trim();
+    const image = (cols[5] || '').trim();
     battles.push({
       id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      bossName, categories, series, notes
+      bossName, categories, series, notes, rarity, image
     });
     imported++;
   });
@@ -530,6 +601,13 @@ document.getElementById('modal-overlay').addEventListener('click', (e) => {
 });
 document.getElementById('btn-import').addEventListener('click', () => {
   document.getElementById('csv-file-input').click();
+});
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  if (!confirm('登録されている全データを削除します。この操作は取り消せません。よろしいですか?')) return;
+  battles = [];
+  saveBattles();
+  render();
+  showToast('全データを削除しました');
 });
 document.getElementById('csv-file-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
