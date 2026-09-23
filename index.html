@@ -79,16 +79,17 @@
   }
   .toolbar button {
     flex: 1;
-    padding: 9px 0;
+    padding: 9px 2px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: #fafafa;
-    font-size: 13px;
+    font-size: 11.5px;
     color: #333;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
+    white-space: nowrap;
   }
   main {
     padding: 8px 12px 24px;
@@ -161,6 +162,14 @@
     color: var(--accent);
   }
   .tag.clickable { cursor: pointer; }
+  .tag-attr {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #fdeee0;
+    color: #a35a1a;
+  }
+  .tag-attr.clickable { cursor: pointer; }
   .meta {
     font-size: 12px;
     color: var(--text-muted);
@@ -280,8 +289,9 @@
 <header>
   <h1>特攻カテゴリ早見表</h1>
   <div class="tabs">
-    <button class="tab-btn active" id="tab-boss">ボスで検索</button>
-    <button class="tab-btn" id="tab-category">カテゴリで検索</button>
+    <button class="tab-btn active" id="tab-boss">ボス</button>
+    <button class="tab-btn" id="tab-category">カテゴリ</button>
+    <button class="tab-btn" id="tab-attribute">属性</button>
   </div>
 </header>
 
@@ -292,6 +302,7 @@
 <div class="toolbar">
   <button id="btn-add">+ 手動で追加</button>
   <button id="btn-import">CSVをインポート</button>
+  <button id="btn-export">CSVを書き出す</button>
   <button id="btn-clear-all">全データ削除</button>
 </div>
 <input type="file" id="csv-file-input" accept=".csv,text/csv">
@@ -308,6 +319,10 @@
     <div class="field">
       <label>特攻カテゴリ(複数は | で区切る)</label>
       <textarea id="input-categories" placeholder="例:人造人間・バイオマン|恐怖の化身"></textarea>
+    </div>
+    <div class="field">
+      <label>特攻属性(複数は | で区切る)</label>
+      <textarea id="input-attributes" placeholder="例:超速|極技"></textarea>
     </div>
     <div class="field">
       <label>レアリティ(任意)</label>
@@ -364,12 +379,12 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-function getAllCategories() {
+function groupBattlesByField(fieldName) {
   const map = new Map();
   battles.forEach(b => {
-    (b.categories || []).forEach(c => {
-      if (!map.has(c)) map.set(c, []);
-      map.get(c).push(b);
+    (b[fieldName] || []).forEach(value => {
+      if (!map.has(value)) map.set(value, []);
+      map.get(value).push(b);
     });
   });
   return map;
@@ -389,8 +404,10 @@ function render() {
 
   if (currentTab === 'boss') {
     renderBossList(container);
+  } else if (currentTab === 'category') {
+    renderGroupList(container, 'categories', '該当するカテゴリが見つかりません。');
   } else {
-    renderCategoryList(container);
+    renderGroupList(container, 'attributes', '該当する属性が見つかりません。');
   }
 }
 
@@ -418,6 +435,7 @@ function renderBossList(container) {
         </div>
         <div class="tag-list">
           ${(b.categories || []).map(c => `<span class="tag">${escapeHtml(c)}</span>`).join('')}
+          ${(b.attributes || []).map(a => `<span class="tag-attr">${escapeHtml(a)}</span>`).join('')}
         </div>
         ${b.series ? `<p class="meta">${escapeHtml(b.series)}</p>` : ''}
         ${b.notes ? `<p class="meta">${escapeHtml(b.notes)}</p>` : ''}
@@ -437,31 +455,34 @@ function renderBossList(container) {
   });
 }
 
-function renderCategoryList(container) {
-  const map = getAllCategories();
+function renderGroupList(container, fieldName, emptyMessage) {
+  const map = groupBattlesByField(fieldName);
   let names = Array.from(map.keys());
   if (searchText) {
     names = names.filter(n => n.toLowerCase().includes(searchText.toLowerCase()));
   }
   if (names.length === 0) {
-    container.innerHTML = `<div class="empty-state"><p>該当するカテゴリが見つかりません。</p></div>`;
+    container.innerHTML = `<div class="empty-state"><p>${emptyMessage}</p></div>`;
     return;
   }
   names.sort((a, b) => a.localeCompare(b, 'ja'));
+  const tagClass = fieldName === 'attributes' ? 'tag-attr' : 'tag';
   names.forEach(name => {
     const list = map.get(name);
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
-      <p class="card-title">${escapeHtml(name)}</p>
-      <p class="category-count">${list.length}体のボスが対象</p>
-      <div class="tag-list" style="margin-top:8px;">
-        ${list.map(b => `<span class="tag clickable" data-boss="${escapeHtml(b.bossName)}">${escapeHtml(b.bossName)}</span>`).join('')}
+      <div class="card-body">
+        <p class="card-title">${escapeHtml(name)}</p>
+        <p class="category-count">${list.length}体のボスが対象</p>
+        <div class="tag-list" style="margin-top:8px;">
+          ${list.map(b => `<span class="${tagClass} clickable" data-boss="${escapeHtml(b.bossName)}">${escapeHtml(b.bossName)}</span>`).join('')}
+        </div>
       </div>
     `;
     container.appendChild(card);
   });
-  container.querySelectorAll('.tag.clickable').forEach(tag => {
+  container.querySelectorAll('.clickable').forEach(tag => {
     tag.addEventListener('click', () => {
       currentTab = 'boss';
       searchText = tag.dataset.boss;
@@ -490,6 +511,7 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'ボスを追加';
   document.getElementById('input-boss-name').value = '';
   document.getElementById('input-categories').value = '';
+  document.getElementById('input-attributes').value = '';
   document.getElementById('input-rarity').value = '';
   document.getElementById('input-image').value = '';
   document.getElementById('input-series').value = '';
@@ -504,6 +526,7 @@ function openEditModal(id) {
   document.getElementById('modal-title').textContent = 'ボスを編集';
   document.getElementById('input-boss-name').value = battle.bossName;
   document.getElementById('input-categories').value = (battle.categories || []).join('|');
+  document.getElementById('input-attributes').value = (battle.attributes || []).join('|');
   document.getElementById('input-rarity').value = battle.rarity || '';
   document.getElementById('input-image').value = battle.image || '';
   document.getElementById('input-series').value = battle.series || '';
@@ -523,6 +546,8 @@ function saveModal() {
   }
   const categories = document.getElementById('input-categories').value
     .split('|').map(s => s.trim()).filter(Boolean);
+  const attributes = document.getElementById('input-attributes').value
+    .split('|').map(s => s.trim()).filter(Boolean);
   const rarity = document.getElementById('input-rarity').value.trim();
   const image = document.getElementById('input-image').value.trim();
   const series = document.getElementById('input-series').value.trim();
@@ -532,6 +557,7 @@ function saveModal() {
     const battle = battles.find(b => b.id === editingId);
     battle.bossName = bossName;
     battle.categories = categories;
+    battle.attributes = attributes;
     battle.rarity = rarity;
     battle.image = image;
     battle.series = series;
@@ -539,7 +565,7 @@ function saveModal() {
   } else {
     battles.push({
       id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      bossName, categories, rarity, image, series, notes
+      bossName, categories, attributes, rarity, image, series, notes
     });
   }
   saveBattles();
@@ -562,9 +588,10 @@ function parseCSV(text) {
     const notes = (cols[3] || '').trim();
     const rarity = (cols[4] || '').trim();
     const image = (cols[5] || '').trim();
+    const attributes = (cols[6] || '').split('|').map(s => s.trim()).filter(Boolean);
     battles.push({
       id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      bossName, categories, series, notes, rarity, image
+      bossName, categories, series, notes, rarity, image, attributes
     });
     imported++;
   });
@@ -575,8 +602,13 @@ function parseCSV(text) {
 function updateTabUI() {
   document.getElementById('tab-boss').classList.toggle('active', currentTab === 'boss');
   document.getElementById('tab-category').classList.toggle('active', currentTab === 'category');
-  document.getElementById('search-input').placeholder =
-    currentTab === 'boss' ? 'ボス名で検索(例:セル)' : 'カテゴリ名で検索(例:GT)';
+  document.getElementById('tab-attribute').classList.toggle('active', currentTab === 'attribute');
+  const placeholders = {
+    boss: 'ボス名で検索(例:セル)',
+    category: 'カテゴリ名で検索(例:GT)',
+    attribute: '属性で検索(例:超速)'
+  };
+  document.getElementById('search-input').placeholder = placeholders[currentTab];
 }
 
 document.getElementById('tab-boss').addEventListener('click', () => {
@@ -586,6 +618,11 @@ document.getElementById('tab-boss').addEventListener('click', () => {
 });
 document.getElementById('tab-category').addEventListener('click', () => {
   currentTab = 'category';
+  updateTabUI();
+  render();
+});
+document.getElementById('tab-attribute').addEventListener('click', () => {
+  currentTab = 'attribute';
   updateTabUI();
   render();
 });
@@ -599,6 +636,49 @@ document.getElementById('btn-save').addEventListener('click', saveModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'modal-overlay') closeModal();
 });
+function csvEscape(value) {
+  const str = value ?? '';
+  // カンマ・改行・ダブルクォートを含む場合はダブルクォートで囲む
+  if (/[",\n\r]/.test(str)) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+function exportCSV() {
+  if (battles.length === 0) {
+    showToast('書き出すデータがありません');
+    return;
+  }
+  const header = ['boss_name', 'categories', 'series', 'notes', 'rarity', 'image', 'attributes'];
+  const lines = [header.join(',')];
+  battles.forEach(b => {
+    lines.push([
+      csvEscape(b.bossName),
+      csvEscape((b.categories || []).join('|')),
+      csvEscape(b.series || ''),
+      csvEscape(b.notes || ''),
+      csvEscape(b.rarity || ''),
+      csvEscape(b.image || ''),
+      csvEscape((b.attributes || []).join('|'))
+    ].join(','));
+  });
+  const csvContent = '\uFEFF' + lines.join('\r\n'); // BOM付きでExcelでも文字化けしにくくする
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const stamp = now.toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `dokkan_extreme_backup_${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`${battles.length}件を書き出しました`);
+}
+
+document.getElementById('btn-export').addEventListener('click', exportCSV);
 document.getElementById('btn-import').addEventListener('click', () => {
   document.getElementById('csv-file-input').click();
 });
